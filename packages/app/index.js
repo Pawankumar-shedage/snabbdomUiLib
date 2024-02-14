@@ -1,59 +1,38 @@
 // app/index.js
 
-import {updateState,onMount} from "../ui-library/src/index.js"
-
-import {init} from "../../node_modules/snabbdom/build/init.js"
-
 import {h} from "../../node_modules/snabbdom/build/h.js"
 
 
-  
-const patch = init([]);
+// Get the initial count value from the h1 tag
+const initialCount = parseInt(document.querySelector('h1').textContent.trim(), 10);
 
-const app = document.getElementById('app');
+let state = { count: initialCount };
+
 
 
 function createVNode(elementType, attributes,content) {
 
   // const children = content.map((e) => (e.text));
   const data = { attrs: attributes };
+  let children;
 
-  console.log("element text: ",content)
+  if (Array.isArray(content)) {
+    children = content.map(e => e.content);
+  } else {
+    children = content;
+  }
 
-  return h(elementType, attributes, `${content}`);
-}
+  // console.log("element text: ", children);
 
-// Define template function
-const vNode = (state, props) => {
-
-  console.log("template() ", props);
-
-  // Create a virtual node based on user input
-
-  const virtualNodes = props.map((element)=>{
-
-    console.log('virtual Node:', element)
-
-    return createVNode(element.elementType,element.attributes, element.content );
-  }) 
-
-  // Concatenate all virtual nodes into a single array
-  const concatenatedNodes = [].concat(...virtualNodes);
-
-  console.log("Concatenated Nodes", concatenatedNodes);
-
-  // Return the concatenated array of virtual nodes
-  return concatenatedNodes;
+  return h(elementType,data,children);
 }
 
 
-
-// ---new code
+// ---CREATE DOM ELEMENT to
 
 function createDOMElement(vNode) {
 
-
-  console.log("vNode:",vNode)
+  // console.log("vNode:",vNode)
 
   // Check if the vNode is a text node
   if (typeof vNode === 'string') {
@@ -80,6 +59,12 @@ function createDOMElement(vNode) {
     element.addEventListener('click', vNode.data.attrs.onclick);
   }
 
+  // innerHTML or textContent
+  if(vNode.text)
+  {
+    element.textContent = vNode.text;
+  }
+
   // Add children
   if (vNode.children) {
     vNode.children.forEach(child => {
@@ -91,45 +76,103 @@ function createDOMElement(vNode) {
 }
 
 
-// RENDER ONMOUNT
-onMount(() => {
-    console.log("Component mounted");
+function updateState(newState) {
+  // updating state of application.
+  state = {...state,count:newState.count}
+  render();
+}
 
-    // Sample state and props for testing
-    const state = {
-      count:8
-    };
 
-    // dom elements 
-    const elements = [
-        {
-          elementType: 'h1', // Example: 'span', 'div', 'h1', etc.
-          content: `${state.count}`,
-          attributes: {  onclick: ()=>console.log('btn Click') }, // Additional attributes as needed
-        },
-        {
-          elementType: 'h2', 
-          content: `${state.count}`,
-          attributes: {  onclick: ()=>console.log('btn Click') },
-        },
-        {
-          elementType: 'h3', 
-          content: `${state.count}`,
-          attributes: {  onclick: ()=>console.log('btn Click') },
-        }
-    ];
+ function handleClick(){
+  const newState = { ...state, count: state.count + 1 };
+  // console.log("state in hadleClick",state)
+  updateState(newState);
+  
+}
 
-    // Clear app container and render the user-defined element
-    app.innerHTML = '';
 
-    // Virtual Nodes
-    const vNodes = vNode(state,elements);
+// GENERATE ELEMENTS
+function generateElements() {
+  const app = document.getElementById('app');
+  const elements = [];
 
-    console.log(vNodes)
+  // Looping through child nodes of app element
+  app.childNodes.forEach(child => {
 
-    vNodes.forEach(vNode => {
-      const element = createDOMElement(vNode);
-      app.appendChild(element);
+  // Check if the child node is an element
+  if (child.nodeType === 1) {
+    const elementType = child.tagName.toLowerCase();
+    const content = child.textContent.trim();
+    const attributes = {};
+
+    // Extract attributes
+    Array.from(child.attributes).forEach(attr => {
+      attributes[attr.name] = attr.value;
     });
 
+      // Check if it's the button element, and if so, set onclick 
+      // to handleClick(Updating state)
+      if (elementType === 'button') {
+      attributes['onclick'] = handleClick;
+    }
+
+    // Pushing element data to elements array
+    elements.push({ elementType, content, attributes });
+  }
 });
+
+  // console.log('Generated elements:', elements);
+  return elements;
+}
+
+// LIFECYCLE events
+
+let mountCallbacks = [];
+
+function onMount(callback) {
+  mountCallbacks.push(callback);
+}
+
+function triggerMountCallbacks() {
+  mountCallbacks.forEach(callback => {
+    callback();
+  });
+}
+
+
+// RENDER 
+function render() {
+  const app = document.getElementById("app");
+
+  const elements = generateElements();
+
+  const h1Element = elements.find(element => element.elementType === 'h1');
+
+  if (h1Element) {
+    h1Element.content = `${state.count}`;
+  }
+
+  const vNodes = elements.map(element => {
+    return createVNode(element.elementType, element.attributes, element.content);
+  });
+
+  app.innerHTML = ''; // Clearing the existing elements
+
+  vNodes.forEach(vNode => {
+    const element = createDOMElement(vNode);
+    app.appendChild(element);
+  });
+
+}
+
+onMount(() => {
+  console.log("Component Mounted!")
+});
+
+function initialize() {
+  render(); 
+  triggerMountCallbacks();
+}
+
+// Call the initialize function to start the application
+initialize();
