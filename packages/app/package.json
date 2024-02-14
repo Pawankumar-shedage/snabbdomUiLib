@@ -1,0 +1,22 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "> TODO: description",
+  "author": "Pawankumar Shedage <pawankumarshedage@gmail.com>",
+  "homepage": "",
+  "license": "ISC",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "node ./__tests__/app.test.js"
+  },
+  "dependencies": {
+    "snabbdom": "^3.6.2"
+  }
+}
